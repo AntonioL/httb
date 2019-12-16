@@ -1,27 +1,7 @@
-cmake_minimum_required(VERSION 3.0)
-project(httb
-        VERSION 1.0.0
-        DESCRIPTION "Simple C++ Boost HTTP client"
-        HOMEPAGE_URL "https://github.com/edwardstock/httb"
-        LANGUAGES CXX
-        )
-
-execute_process(
-	COMMAND bash -c "echo ${CMAKE_PROJECT_VERSION} > ${CMAKE_CURRENT_SOURCE_DIR}/version"
-)
-
-list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/modules)
-include(ConanInit)
-
-add_conan_remote(bincrafters https://api.bintray.com/conan/bincrafters/public-conan)
-add_conan_remote(scatter https://api.bintray.com/conan/edwardstock/scatter)
-add_conan_remote(edwardstock https://api.bintray.com/conan/edwardstock/conan-public)
-conan_init()
+cmake_minimum_required(VERSION 3.10)
+project(httb C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_DEBUG_POSTFIX "" CACHE STRING "postfix")
-
-option(WITH_TESTS "Enable tests" OFF)
 
 set(HEADERS
     include/httb/httb.h
@@ -46,57 +26,21 @@ set(SOURCES
     src/async_session.cpp
     )
 
-add_library(${PROJECT_NAME} STATIC ${SOURCES})
-target_compile_definitions(${PROJECT_NAME} PUBLIC -DHTTB_VERSION="${CMAKE_PROJECT_VERSION}")
+enable_testing()
 
-target_compile_options(${PROJECT_NAME} PUBLIC -fPIC -pedantic -Wall -Wsign-compare -Wunused-parameter)
+find_package(Boost 1.70)
+find_package(OpenSSL REQUIRED)
+add_subdirectory(3rd-party/toolbox)
+add_subdirectory(3rd-party/googletest)
 
-target_include_directories(${PROJECT_NAME} PUBLIC include)
+add_library(httb-lib STATIC ${SOURCES})
 
-target_link_libraries(${PROJECT_NAME} CONAN_PKG::boost)
-target_link_libraries(${PROJECT_NAME} CONAN_PKG::toolbox)
-target_link_libraries(${PROJECT_NAME} CONAN_PKG::OpenSSL)
+target_compile_options(httb-lib PUBLIC -fPIC -pedantic -Wall -Wsign-compare -Wunused-parameter)
 
-if (HTTB_TEST)
-	add_definitions(-DTEST_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/tests")
-	set(PROJECT_NAME_TEST ${PROJECT_NAME}-test)
+target_include_directories(httb-lib PUBLIC include)
+target_include_directories(httb-lib PUBLIC ${Boost_INCLUDE_DIRS})
+target_compile_definitions(httb-lib PUBLIC -DHTTB_VERSION="1.0.0")
 
-	execute_process(
-		COMMAND "chmod +x ${CMAKE_CURRENT_SOURCE_DIR}/tests/mock/run-server.sh"
-		ERROR_VARIABLE MK_EXEC_TEST_ERR
-	)
-
-	if (MK_EXEC_TEST_ERR)
-		message(FATAL_ERROR ${MK_EXEC_TEST_ERR})
-	endif ()
-
-	add_executable(${PROJECT_NAME_TEST}
-	               tests/HttpClientTest.cpp
-	               tests/HttpClientNoLocalTest.cpp
-	               )
-	target_include_directories(${PROJECT_NAME_TEST} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
-	target_compile_options(${PROJECT_NAME_TEST} PUBLIC -Wno-unused-parameter)
-	target_link_libraries(${PROJECT_NAME_TEST} ${PROJECT_NAME})
-	target_link_libraries(${PROJECT_NAME_TEST} CONAN_PKG::gtest)
-
-	if (HTTB_COVERAGE)
-		set(COVERAGE_LCOV_EXCLUDES
-		    '${CMAKE_CURRENT_SOURCE_DIR}/libs/*'
-		    '${CMAKE_CURRENT_SOURCE_DIR}/tests/*'
-		    'boost/*'
-		    '/usr/include/*'
-		    '/usr/local/*'
-		    'v1'
-		    )
-		set(COVERAGE_TARGET_PATH ${CMAKE_CURRENT_SOURCE_DIR}/src/)
-		include(cmake-modules/CodeCoverage.cmake)
-		append_coverage_compiler_flags()
-		setup_target_for_coverage_lcov(
-			NAME ${PROJECT_NAME}-coverage
-			EXECUTABLE ${PROJECT_NAME_TEST}
-			DEPENDENCIES ${PROJECT_NAME_TEST}
-		)
-	endif ()
-endif ()
-
-include(modules/install.cmake)
+target_link_libraries(httb-lib ${Boost_LIBRARIES})
+target_link_libraries(httb-lib toolbox)
+target_link_libraries(httb-lib OpenSSL::SSL OpenSSL::Crypto)
