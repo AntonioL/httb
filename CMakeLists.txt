@@ -28,7 +28,7 @@ set(SOURCES
 
 enable_testing()
 
-find_package(Boost 1.70)
+find_package(Boost 1.70 REQUIRED filesystem regex)
 find_package(OpenSSL REQUIRED)
 add_subdirectory(3rd-party/toolbox)
 add_subdirectory(3rd-party/googletest)
@@ -44,3 +44,9 @@ target_compile_definitions(httb-lib PUBLIC -DHTTB_VERSION="1.0.0")
 target_link_libraries(httb-lib ${Boost_LIBRARIES})
 target_link_libraries(httb-lib toolbox)
 target_link_libraries(httb-lib OpenSSL::SSL OpenSSL::Crypto)
+
+add_executable(httb-lib-test tests/HttpClientTest.cpp tests/HttpClientNoLocalTest.cpp)
+target_link_libraries(httb-lib-test httb-lib gtest gtest_main)
+target_include_directories(httb-lib-test PRIVATE ./3rd-party/googletest/googletest/include/)
+target_compile_definitions(httb-lib-test PUBLIC -DTEST_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/tests")
+add_test(NAME httb-lib-test-driver COMMAND $<TARGET_FILE:httb-lib-test>)

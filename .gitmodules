@@ -1,3 +1,6 @@
 [submodule "3rd-party/toolbox"]
 	path = 3rd-party/toolbox
 	url = https://github.com/edwardstock/toolbox
+[submodule "3rd-party/-f"]
+	path = 3rd-party/googletest
+	url = https://github.com/google/googletest
